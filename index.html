@@ -15,7 +15,6 @@ button{border:0;padding:12px 16px;border-radius:30px;font-size:15px;margin:5px;c
 .aiguille:after{content:'';position:absolute;left:-14px;top:0;border-left:14px solid transparent;border-right:14px solid transparent;border-top:105px solid white}
 .point{position:absolute;font-weight:bold;font-size:20px}.n{top:8px;left:50%;color:#FF3B30}.s{bottom:8px;left:50%}.e{right:12px;top:50%}.o{left:12px;top:50%}
 .centre{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:22px;height:22px;background:white;border-radius:50%;border:4px solid #111;z-index:2}
-.codebox{background:#000;border:2px dashed #FFD700;padding:15px;border-radius:15px;font-size:22px;word-break:break-all;margin:10px}
 </style></head>
 <body>
 <h1>✦ FAMILLE THOMPSON ✦</h1>
@@ -24,17 +23,15 @@ button{border:0;padding:12px 16px;border-radius:30px;font-size:15px;margin:5px;c
 <div class="card">
 <h3>Ajouter quelqu'un</h3>
 <input id="nom" placeholder="Prenom : ex: Marc">
-<br><label style="color:#AAA">Sa couleur :</label><br>
-<input type="color" id="couleur" value="#FFFFFF" style="width:70px;height:45px;background:none;border:none">
-<br><button class="btn-add" onclick="ajouter()">Ajouter a ma famille</button>
+<br><input type="color" id="couleur" value="#FFFFFF" style="width:70px;height:45px;background:none;border:none">
+<br><button class="btn-add" onclick="ajouter()">Ajouter</button>
 </div>
 
 <div class="card">
-<h3>🔑 Entrer le CODE de quelqu'un</h3>
-<p style="color:#AAA;font-size:13px">Marc te donne son code ? Colle-le ici !</p>
-<input id="codeEntree" placeholder="Colle le code ici">
-<br><button style="background:#FFD700;color:black;width:90%" onclick="entrerCode()">Valider le CODE</button>
-<div id="monCodeAffiche"></div>
+<h3>📩 J'ai recu un message de Marc ?</h3>
+<p style="color:#AAA;font-size:13px">Colle juste le message ici, je m'occupe du reste !</p>
+<input id="codeEntree" placeholder="Colle le message de Marc ici">
+<br><button style="background:#FFD700;color:black;width:90%" onclick="entrerCode()">Je l'ai trouve !</button>
 </div>
 
 <div class="card"><h3>Ma Famille</h3><div id="liste"></div></div>
@@ -44,7 +41,7 @@ button{border:0;padding:12px 16px;border-radius:30px;font-size:15px;margin:5px;c
 <div class="boussole"><span class="point n">N</span><span class="point s">S</span><span class="point e">E</span><span class="point o">O</span><div class="aiguille" id="aiguille"></div><div class="centre"></div></div>
 <h2 id="distance" style="color:#FFD700">-- m</h2>
 <p id="info" style="color:#AAA">Tourne-toi, suis la pointe rouge !</p>
-<button style="background:white;color:black;width:90%" onclick="activer()">1. ACTIVER LE GPS + BOUSSOLE</button>
+<button style="background:white;color:black;width:90%" onclick="activer()">1. ACTIVER LE GPS</button>
 </div>
 
 <script>
@@ -59,33 +56,34 @@ function ajouter(){
   var c = document.getElementById('couleur').value;
   famille.push({nom:n, couleur:c, lat:null, lng:null});
   document.getElementById('nom').value = '';
-  sauver(); alert(n + ' ajoute ! 🎉');
+  sauver(); alert(n + ' ajoute !');
 }
 function afficher(){
   var html = '';
   for(var i=0; i<famille.length; i++){
     var m = famille[i];
     var txt = 'white'; if(m.couleur.toLowerCase() == '#ffffff'){ txt = 'black'; }
-    var pos = 'Pas de position'; if(m.lat){ pos = 'Position recue !'; }
-    html += '<div class="membre"><div class="rond" style="background:'+m.couleur+';color:'+txt+'">'+m.nom.charAt(0).toUpperCase()+'</div><div style="flex:1;text-align:left"><b>'+m.nom+'</b><br><small style="color:#AAA">'+pos+'</small></div><button style="background:#FFD700;color:black" onclick="jeSuisIci('+i+')">Mon CODE</button><button style="background:'+m.couleur+';color:'+txt+'" onclick="chercher('+i+')">Chercher</button><button onclick="supp('+i+')" style="background:#333;color:white">X</button></div>';
+    var pos = 'Pas de position'; if(m.lat){ pos = 'Trouve !'; }
+    html += '<div class="membre"><div class="rond" style="background:'+m.couleur+';color:'+txt+'">'+m.nom.charAt(0).toUpperCase()+'</div><div style="flex:1;text-align:left"><b>'+m.nom+'</b><br><small style="color:#AAA">'+pos+'</small></div><button style="background:#FFD700;color:black" onclick="envoyer('+i+')">📤 Envoyer ma position</button><button style="background:'+m.couleur+';color:'+txt+'" onclick="chercher('+i+')">Chercher</button><button onclick="supp('+i+')" style="background:#333;color:white">X</button></div>';
   }
   document.getElementById('liste').innerHTML = html;
 }
 function supp(i){ famille.splice(i,1); sauver(); }
-function jeSuisIci(i){
+function envoyer(i){
   if(maLat==null){ alert('Active le GPS en bas d\'abord !'); return; }
   famille[i].lat = maLat; famille[i].lng = maLng; sauver();
-  var code = famille[i].nom + '|' + maLat.toFixed(5) + '|' + maLng.toFixed(5);
-  document.getElementById('monCodeAffiche').innerHTML = '<p style="color:#FFD700">TON CODE A ENVOYER A TA FAMILLE :</p><div class="codebox">' + code + '</div><p style="color:#AAA;font-size:13px">Envoie ce code par SMS a ta famille, ils le collent dans "Entrer le CODE"</p><button style="background:white;color:black" onclick="copierCode(\''+code+'\')">Copier le code</button>';
-  alert('Ton CODE est affiche en haut ! Envoie-le !');
-}
-function copierCode(c){
-  var temp = document.createElement('textarea'); temp.value = c; document.body.appendChild(temp); temp.select(); document.execCommand('copy'); document.body.removeChild(temp);
-  alert('Code copie ! Colle-le dans ton SMS !');
+  var message = 'Coucou c\'est ' + famille[i].nom + ' ! Viens me trouver ❤️ CODE:' + famille[i].nom + '|' + maLat.toFixed(5) + '|' + maLng.toFixed(5);
+  if(navigator.share){
+    navigator.share({title:'Viens me trouver', text:message});
+  } else {
+    var temp = document.createElement('textarea'); temp.value = message; document.body.appendChild(temp); temp.select(); document.execCommand('copy'); document.body.removeChild(temp);
+    alert('Message copie ! Colle-le dans ton SMS !');
+  }
 }
 function entrerCode(){
-  var code = document.getElementById('codeEntree').value;
-  if(!code || code.indexOf('|')==-1){ alert('Ce code ne marche pas, copie bien tout le code !'); return; }
+  var texte = document.getElementById('codeEntree').value;
+  if(!texte || texte.indexOf('CODE:')==-1){ alert('Colle tout le message de Marc, avec CODE: dedans !'); return; }
+  var code = texte.split('CODE:')[1].trim();
   var parts = code.split('|');
   var nomPos = parts[0]; var latPos = parseFloat(parts[1]); var lngPos = parseFloat(parts[2]);
   var trouve = false;
@@ -95,7 +93,7 @@ function entrerCode(){
   document.getElementById('codeEntree').value = '';
   alert(nomPos + ' trouve ! Clique sur Chercher ' + nomPos + ' !');
 }
-function chercher(i){ cibleIndex = i; var c = famille[i]; document.getElementById('cherche').innerText = 'On cherche ' + c.nom + '...'; if(!c.lat){ document.getElementById('info').innerText = c.nom + ' doit cliquer "Mon CODE" et t\'envoyer son code !'; return; } maj(); }
+function chercher(i){ cibleIndex = i; var c = famille[i]; document.getElementById('cherche').innerText = 'On cherche ' + c.nom + '...'; if(!c.lat){ document.getElementById('info').innerText = c.nom + ' doit cliquer "Envoyer ma position" !'; return; } maj(); }
 function maj(){
   if(cibleIndex < 0) return; var c = famille[cibleIndex]; if(!c.lat || maLat==null) return;
   var r = Math.PI/180; var dLat = (c.lat - maLat) * r; var dLng = (c.lng - maLng) * r;
@@ -115,4 +113,4 @@ function activer(){
 }
 window.addEventListener('deviceorientation', function(e){ if(e.webkitCompassHeading != null){ heading = e.webkitCompassHeading; } else if(e.alpha != null){ heading = 360 - e.alpha; } maj(); });
 afficher();
-</script></body></html>
+</script></body></html
