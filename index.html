@@ -26,6 +26,8 @@ button{border:0;padding:12px 16px;border-radius:30px;font-size:15px;margin:5px;c
 <br><label style="color:#AAA">Sa couleur :</label><br>
 <input type="color" id="couleur" value="#FFFFFF" style="width:70px;height:45px;background:none;border:none">
 <br><button class="btn-add" onclick="ajouter()">Ajouter a ma famille</button>
+<br><button style="background:#FFD700;color:black;width:90%" onclick="partagerFamille()">🔗 PARTAGER MA FAMILLE A MARC</button>
+<p style="color:#AAA;font-size:12px">Clique ici, puis envoie le lien a Marc par SMS / Messenger. Quand il ouvre le lien, il aura la meme famille que toi !</p>
 </div>
 
 <div class="card"><h3>Ma Famille</h3><div id="liste"></div></div>
@@ -41,89 +43,80 @@ button{border:0;padding:12px 16px;border-radius:30px;font-size:15px;margin:5px;c
 <script>
 var famille = [];
 try { famille = JSON.parse(localStorage.getItem('famille3') || '[]'); } catch(e){ famille = []; }
+
+// SI ON OUVRE UN LIEN PARTAGE, ON RECUPERE LA FAMILLE
+var params = new URLSearchParams(window.location.search);
+if(params.get('f')){
+  try{
+    var recu = JSON.parse(decodeURIComponent(params.get('f')));
+    famille = recu; localStorage.setItem('famille3', JSON.stringify(famille));
+    alert('Famille recue ! 🎉 Tu as maintenant la meme famille !');
+  }catch(e){}
+}
+if(params.get('pos')){
+  try{
+    var p = params.get('pos').split(',');
+    var nomPos = decodeURIComponent(p[0]); var latPos = parseFloat(p[1]); var lngPos = parseFloat(p[2]);
+    var trouve = false;
+    for(var k=0;k<famille.length;k++){ if(famille[k].nom.toLowerCase()==nomPos.toLowerCase()){ famille[k].lat=latPos; famille[k].lng=lngPos; trouve=true; } }
+    if(!trouve){ famille.push({nom:nomPos, couleur:'#FFFFFF', lat:latPos, lng:lngPos}); }
+    localStorage.setItem('famille3', JSON.stringify(famille));
+    alert(nomPos + ' est a : ' + latPos + ' ! Clique sur Chercher !');
+  }catch(e){}
+}
 if(famille.length==0){ famille = [{nom:'Maman',couleur:'#FF2E7E',lat:null,lng:null},{nom:'Papa',couleur:'#2E86FF',lat:null,lng:null}]; sauver(); }
-var maLat=null, maLng=null, heading=0, cibleIndex=-1;
-
+var maLat=null, maLng=null, heading=0, cibleIndex=-1, monNom='Moi';
 function sauver(){ localStorage.setItem('famille3', JSON.stringify(famille)); afficher(); }
-
 function ajouter(){
   var n = document.getElementById('nom').value;
   if(!n){ alert('Ecris un prenom !'); return; }
   var c = document.getElementById('couleur').value;
   famille.push({nom:n, couleur:c, lat:null, lng:null});
   document.getElementById('nom').value = '';
-  sauver();
-  alert(n + ' ajoute ! 🎉');
+  sauver(); alert(n + ' ajoute ! 🎉 Maintenant clique sur PARTAGER pour l\'envoyer a Marc !');
 }
-
 function afficher(){
   var html = '';
   for(var i=0; i<famille.length; i++){
     var m = famille[i];
-    var txt = 'white';
-    if(m.couleur.toLowerCase() == '#ffffff'){ txt = 'black'; }
-    var pos = 'Pas de position';
-    if(m.lat){ pos = 'Position enregistree'; }
+    var txt = 'white'; if(m.couleur.toLowerCase() == '#ffffff'){ txt = 'black'; }
+    var pos = 'Pas de position'; if(m.lat){ pos = 'Position recue !'; }
     html += '<div class="membre"><div class="rond" style="background:'+m.couleur+';color:'+txt+'">'+m.nom.charAt(0).toUpperCase()+'</div><div style="flex:1;text-align:left"><b>'+m.nom+'</b><br><small style="color:#AAA">'+pos+'</small></div><button style="background:#333;color:white" onclick="jeSuisIci('+i+')">Je suis ici</button><button style="background:'+m.couleur+';color:'+txt+'" onclick="chercher('+i+')">Chercher</button><button onclick="supp('+i+')" style="background:#333;color:white">X</button></div>';
   }
   document.getElementById('liste').innerHTML = html;
 }
-
 function supp(i){ famille.splice(i,1); sauver(); }
-
 function jeSuisIci(i){
   if(maLat==null){ alert('Active le GPS en bas d\'abord !'); return; }
-  famille[i].lat = maLat; famille[i].lng = maLng;
-  sauver();
-  alert(famille[i].nom + ' enregistre ICI !');
+  famille[i].lat = maLat; famille[i].lng = maLng; sauver();
+  // CREE UN LIEN DE POSITION A ENVOYER
+  var lien = window.location.origin + window.location.pathname + '?pos=' + encodeURIComponent(famille[i].nom) + ',' + maLat + ',' + maLng;
+  if(navigator.share){ navigator.share({title:'Ma position', text:'Je suis ici ! Clique pour me trouver !', url:lien}); }
+  else { prompt('Copie ce lien et envoie-le a ta famille :', lien); }
 }
-
-function chercher(i){
-  cibleIndex = i;
-  var c = famille[i];
-  document.getElementById('cherche').innerText = 'On cherche ' + c.nom + '...';
-  if(!c.lat){ document.getElementById('info').innerText = c.nom + ' n\'a pas encore clique "Je suis ici"'; return; }
-  maj();
+function chercher(i){ cibleIndex = i; var c = famille[i]; document.getElementById('cherche').innerText = 'On cherche ' + c.nom + '...'; if(!c.lat){ document.getElementById('info').innerText = c.nom + ' doit cliquer "Je suis ici" et t\'envoyer son lien !'; return; } maj(); }
+function partagerFamille(){
+  var lien = window.location.origin + window.location.pathname + '?f=' + encodeURIComponent(JSON.stringify(famille));
+  if(navigator.share){ navigator.share({title:'Notre famille', text:'Voici notre famille ! Ouvre ce lien !', url:lien}); }
+  else { prompt('Copie ce lien et envoie-le a Marc :', lien); }
 }
-
 function maj(){
-  if(cibleIndex < 0) return;
-  var c = famille[cibleIndex];
-  if(!c.lat || maLat==null) return;
-  var r = Math.PI/180;
-  var dLat = (c.lat - maLat) * r;
-  var dLng = (c.lng - maLng) * r;
+  if(cibleIndex < 0) return; var c = famille[cibleIndex]; if(!c.lat || maLat==null) return;
+  var r = Math.PI/180; var dLat = (c.lat - maLat) * r; var dLng = (c.lng - maLng) * r;
   var a = Math.pow(Math.sin(dLat/2),2) + Math.cos(maLat*r) * Math.cos(c.lat*r) * Math.pow(Math.sin(dLng/2),2);
   var dist = 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  var y = Math.sin(dLng) * Math.cos(c.lat*r);
-  var x = Math.cos(maLat*r) * Math.sin(c.lat*r) - Math.sin(maLat*r) * Math.cos(c.lat*r) * Math.cos(dLng);
-  var cap = (Math.atan2(y,x) * 180 / Math.PI + 360) % 360;
-  var rot = cap - heading;
+  var y = Math.sin(dLng) * Math.cos(c.lat*r); var x = Math.cos(maLat*r) * Math.sin(c.lat*r) - Math.sin(maLat*r) * Math.cos(c.lat*r) * Math.cos(dLng);
+  var cap = (Math.atan2(y,x) * 180 / Math.PI + 360) % 360; var rot = cap - heading;
   document.getElementById('distance').innerText = Math.round(dist) + ' m';
-  if(dist < 20){ document.getElementById('info').innerText = 'TU ES TOUT PRES ! 🎉'; }
-  else { document.getElementById('info').innerText = 'Marche vers la pointe ROUGE !'; }
+  if(dist < 20){ document.getElementById('info').innerText = 'TU ES TOUT PRES ! 🎉'; } else { document.getElementById('info').innerText = 'Marche vers la pointe ROUGE !'; }
   document.getElementById('aiguille').style.transform = 'translate(-50%,-50%) rotate(' + rot + 'deg)';
 }
-
 function activer(){
-  alert('Je demande le GPS...');
-  if(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
-    DeviceOrientationEvent.requestPermission().catch(function(){});
-  }
+  if(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){ DeviceOrientationEvent.requestPermission().catch(function(){}); }
   if(!navigator.geolocation){ alert('Pas de GPS'); return; }
-  navigator.geolocation.watchPosition(function(p){
-    maLat = p.coords.latitude; maLng = p.coords.longitude;
-    document.getElementById('status').innerText = 'GPS OK ✅';
-    maj();
-  }, function(e){ alert('Autorise la position ! ' + e.message); }, {enableHighAccuracy:true});
+  navigator.geolocation.watchPosition(function(p){ maLat = p.coords.latitude; maLng = p.coords.longitude; document.getElementById('status').innerText = 'GPS OK ✅'; maj(); }, function(e){ alert('Autorise la position ! ' + e.message); }, {enableHighAccuracy:true});
   alert('GPS demande ! Dis Autoriser !');
 }
-
-window.addEventListener('deviceorientation', function(e){
-  if(e.webkitCompassHeading != null){ heading = e.webkitCompassHeading; }
-  else if(e.alpha != null){ heading = 360 - e.alpha; }
-  maj();
-});
-
+window.addEventListener('deviceorientation', function(e){ if(e.webkitCompassHeading != null){ heading = e.webkitCompassHeading; } else if(e.alpha != null){ heading = 360 - e.alpha; } maj(); });
 afficher();
 </script></body></html>
