@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Famille Thompson - Retrouve ta famille</title>
+<style>
+*{box-sizing:border-box}
+body{background:#0A0A0A;color:#fff;text-align:center;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;padding:14px 14px 40px}
+h1{font-size:22px;letter-spacing:.5px}
+.card{background:#1A1A1A;padding:18px;border-radius:24px;max-width:440px;margin:12px auto;border:1px solid #2A2A2A;text-align:left}
+.card h3{margin:0 0 8px;text-align:center}
+.muted{color:#AAA;font-size:13px;text-align:center}
+input{padding:14px;border-radius:15px;border:2px solid #333;background:#222;color:#fff;width:100%;margin:6px 0;font-size:16px}
+button{border:0;padding:13px 16px;border-radius:30px;font-size:15px;margin:5px 0;cursor:pointer;font-weight:800;width:100%}
+.btn-gold{background:#FFD700;color:#000}
+.btn-white{background:#fff;color:#000}
+.btn-dark{background:#333;color:#fff;width:auto;padding:9px 12px;font-size:12px}
+.membre{padding:12px;border-radius:18px;margin:8px 0;display:flex;align-items:center;gap:10px;background:#222}
+.moi{border:2px solid #FFD700}
+.rond{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;flex-shrink:0}
+.boussole{width:260px;height:260px;border-radius:50%;border:3px solid #333;background:#111;margin:15px auto;position:relative}
+.aiguille{position:absolute;left:50%;top:50%;width:0;height:0;transform:translate(-50%,-50%)}
+.aiguille:before{content:'';position:absolute;left:-14px;top:-105px;border-left:14px solid transparent;border-right:14px solid transparent;border-bottom:105px solid #FF3B30}
+.aiguille:after{content:'';position:absolute;left:-14px;top:0;border-left:14px solid transparent;border-right:14px solid transparent;border-top:105px solid #fff}
+.point{position:absolute;font-weight:900;font-size:20px}
+.n{top:8px;left:50%;transform:translateX(-50%);color:#FF3B30}
+.s{bottom:8px;left:50%;transform:translateX(-50%)}
+.e{right:12px;top:50%;transform:translateY(-50%)}
+.o{left:12px;top:50%;transform:translateY(-50%)}
+.centre{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:22px;height:22px;background:#fff;border-radius:50%;border:4px solid #111;z-index:2}
+.steps{background:#1A1A1A;border:1px solid #2A2A2A;border-radius:18px;max-width:440px;margin:0 auto 12px;padding:12px;text-align:left;font-size:14px;line-height:1.6}
+textarea{width:100%;min-height:70px;background:#222;color:#fff;border:2px solid #333;border-radius:14px;padding:12px;font-size:14px}
+#msgBox{display:none;background:#222;border:1px solid #FFD700;border-radius:14px;padding:12px;margin-top:10px;word-break:break-word;font-size:13px;text-align:left}
+</style>
+</head>
+<body>
+<h1>✦ FAMILLE THOMPSON ✦</h1>
+<p id="status" style="color:#AAA">Clique sur ACTIVER LE GPS en bas</p>
+
+<div class="steps"><b>Comment ça marche ?</b><br>
+1. Mettez le <b>MÊME code de famille</b><br>
+2. Activez le GPS<br>
+3. La personne perdue clique <b>C'EST MOI, envoyer ma position</b><br>
+4. L'autre colle le message reçu et clique <b>Chercher</b></div>
+
+<div class="card" id="setupCard">
+<h3>C'est le téléphone de qui ?</h3>
+<p class="muted">Choisis UNE fois, après c'est enregistré !</p>
+<input id="monNomInput" placeholder="Ton prénom : ex: Jenny">
+<input id="codeGroupeInput" placeholder="Code de famille : ex: THOMPSON">
+<button class="btn-gold" onclick="setup()">C'est mon téléphone !</button>
+<p class="muted">Vous devez tous mettre le MÊME code de famille !</p>
+</div>
+
+<div class="card">
+<h3>Ma Famille - Groupe : <span id="groupeAffiche" style="color:#FFD700"></span></h3>
+<p style="text-align:center">Tu es : <b id="moiAffiche" style="color:#FFD700"></b> <button class="btn-dark" onclick="changerMoi()">Changer</button></p>
+<input id="nom" placeholder="Ajouter quelqu'un : ex: Marc"><br>
+<label style="font-size:13px;color:#AAA">Sa couleur :</label>
+<input type="color" id="couleur" value="#FFFFFF" style="width:70px;height:45px;background:none;border:none">
+<button class="btn-white" onclick="ajouter()">Ajouter à ma famille</button>
+</div>
+
+<div class="card">
+<h3>J'ai reçu un message ?</h3>
+<textarea id="codeEntree" placeholder="Colle le message reçu ici"></textarea>
+<button class="btn-gold" onclick="entrerCode()">Je l'ai trouvé !</button>
+</div>
+
+<div class="card"><h3>Ma Famille</h3><div id="liste"></div></div>
+
+<div class="card" style="text-align:center">
+<h3 id="cherche">Choisis quelqu'un...</h3>
+<div class="boussole"><span class="point n">N</span><span class="point s">S</span><span class="point e">E</span><span class="point o">O</span><div class="aiguille" id="aiguille"></div><div class="centre"></div></div>
+<h2 id="distance" style="color:#FFD700">-- m</h2>
+<p id="info" class="muted">Tourne-toi, suis la pointe rouge !</p>
+<p id="heurePos" class="muted"></p>
+<button class="btn-white" onclick="activer()">1. ACTIVER LE GPS</button>
+<button class="btn-gold" onclick="actualiserMoi()">Actualiser ma position et renvoyer</button>
+<div id="msgBox"></div>
+</div>
+
+<script>
+var famille=[];
+try{famille=JSON.parse(localStorage.getItem('famille3')||'[]')}catch(e){famille=[]}
+var monNom=localStorage.getItem('monNom')||'';
+var codeGroupe=localStorage.getItem('codeGroupe')||'';
+var maLat=null,maLng=null,heading=0,cibleIndex=-1;
+
+function setup(){
+  var n=document.getElementById('monNomInput').value.trim();
+  var g=document.getElementById('codeGroupeInput').value.trim();
+  if(!n||!g){alert('Écris ton prénom ET le code de famille !');return;}
+  monNom=n; codeGroupe=g.toUpperCase();
+  localStorage.setItem('monNom',monNom);
+  localStorage.setItem('codeGroupe',codeGroupe);
+  var existe=famille.some(m=>m.nom.toLowerCase()==monNom.toLowerCase());
+  if(!existe) famille.push({nom:monNom,couleur:'#FFD700',lat:null,lng:null});
+  sauver(); majSetup();
+  alert('Bienvenue '+monNom+' ! Groupe : '+codeGroupe);
+}
+function changerMoi(){
+  if(confirm('Changer de personne ?')){localStorage.removeItem('monNom'); monNom=''; majSetup();}
+}
+function majSetup(){
+  if(monNom){
+    document.getElementById('setupCard').style.display='none';
+    document.getElementById('moiAffiche').innerText=monNom;
+    document.getElementById('groupeAffiche').innerText=codeGroupe;
+  } else {
+    document.getElementById('setupCard').style.display='block';
+  }
+}
+if(famille.length==0){
+  famille=[{nom:'Maman',couleur:'#FF2E7E',lat:null,lng:null},{nom:'Papa',couleur:'#2E86FF',lat:null,lng:null}];
+  sauver();
+}
+function sauver(){localStorage.setItem('famille3',JSON.stringify(famille)); afficher();}
+function ajouter(){
+  var n=document.getElementById('nom').value.trim();
+  if(!n){alert('Écris un prénom !');return;}
+  var c=document.getElementById('couleur').value;
+  famille.push({nom:n,couleur:c,lat:null,lng:null});
+  document.getElementById('nom').value=''; sauver();
+}
+function fmtHeure(t){
+  if(!t) return '';
+  var d=new Date(t);
+  return 'Position reçue à '+d.toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'});
+}
+function afficher(){
+  var html='';
+  for(var i=0;i<famille.length;i++){
+    var m=famille[i];
+    var txt=(m.couleur.toLowerCase()=='#ffffff')?'black':'white';
+    var estMoi=(monNom&&m.nom.toLowerCase()==monNom.toLowerCase());
+    var pos=m.lat?'Trouvé ! '+fmtHeure(m.heure):'Pas de position';
+    var classe='membre'+(estMoi?' moi':'');
+    var boutons=estMoi?'<button style="background:#FFD700;color:black;width:auto" onclick="envoyer('+i+')">C’EST MOI, envoyer ma position</button>':'<button style="background:'+m.couleur+';color:'+txt+';width:auto" onclick="chercher('+i+')">Chercher '+m.nom+'</button>';
+    html+='<div class="'+classe+'"><div class="rond" style="background:'+m.couleur+';color:'+txt+'">'+m.nom.charAt(0).toUpperCase()+'</div><div style="flex:1;text-align:left"><b>'+m.nom+'</b> '+(estMoi?'(C’EST MOI)':'')+'<br><small style="color:#AAA">'+pos+'</small></div>'+boutons+'<button onclick="supp('+i+')" style="background:#333;color:white;width:auto">X</button></div>';
+  }
+  document.getElementById('liste').innerHTML=html;
+}
+function supp(i){famille.splice(i,1); sauver();}
+function buildMessage(m){
+  return 'Coucou groupe '+codeGroupe+' ! Viens me trouver CODE:'+codeGroupe+'|'+m.nom+'|'+maLat.toFixed(5)+'|'+maLng.toFixed(5);
+}
+async function envoyer(i){
+  if(!monNom){alert('Dis-moi d’abord c’est le téléphone de qui !');return;}
+  if(famille[i].nom.toLowerCase()!=monNom.toLowerCase()){alert('Tu ne peux pas envoyer la position de quelqu’un d’autre !');return;}
+  if(maLat==null){alert('Active le GPS en bas d’abord !');return;}
+  famille[i].lat=maLat; famille[i].lng=maLng; famille[i].heure=Date.now(); sauver();
+  var message=buildMessage(famille[i]);
+  var box=document.getElementById('msgBox');
+  box.style.display='block';
+  box.innerHTML='<b>Copie ce message et envoie-le :</b><br><br>'+message+'<br><br><button class="btn-gold" onclick="copierMsg()">Copier le message</button>';
+  window._lastMsg=message;
+  if(navigator.share){
+    try{await navigator.share({title:'Viens me trouver',text:message});}catch(e){}
+  } else {
+    try{await navigator.clipboard.writeText(message); alert('Message copié ! Colle-le dans SMS / Messenger / WhatsApp');}catch(e){alert(message);}
+  }
+}
+function copierMsg(){
+  if(window._lastMsg){navigator.clipboard.writeText(window._lastMsg).then(()=>alert('Copié !'));}
+}
+function actualiserMoi(){
+  var idx=famille.findIndex(m=>monNom&&m.nom.toLowerCase()==monNom.toLowerCase());
+  if(idx<0){alert('Dis-moi d’abord c’est le téléphone de qui !');return;}
+  envoyer(idx);
+}
+function entrerCode(){
+  var texte=document.getElementById('codeEntree').value;
+  if(!texte||texte.indexOf('CODE:')==-1){alert('Colle tout le message reçu !');return;}
+  var code=texte.split('CODE:')[1].trim();
+  var parts=code.split('|');
+  var groupeRecu=parts[0];
+  var nomPos=parts[1];
+  var latPos=parseFloat(parts[2]);
+  var lngPos=parseFloat(parts[3]);
+  if(!codeGroupe){alert('Mets d’abord ton code de famille en haut !');return;}
+  if(groupeRecu.toUpperCase()!=codeGroupe.toUpperCase()){alert('Ce message n’est pas pour ton groupe '+codeGroupe+' ! C’est pour le groupe '+groupeRecu);return;}
+  if(monNom&&nomPos.toLowerCase()==monNom.toLowerCase()){alert('C’est ton propre message !');return;}
+  var trouve=false;
+  for(var k=0;k<famille.length;k++){
+    if(famille[k].nom.toLowerCase()==nomPos.toLowerCase()){
+      famille[k].lat=latPos; famille[k].lng=lngPos; famille[k].heure=Date.now(); trouve=true;
+    }
+  }
