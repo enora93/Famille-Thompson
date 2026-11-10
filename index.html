@@ -1,19 +1,43 @@
 <!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Famille Thompson</title>
+<title>Retrouver Famille Thompson</title>
 <style>
-body{font-family:sans-serif;background:#FFF8E1;margin:0;padding:20px;text-align:center}
-h1{color:#E65100} .card{background:white;padding:20px;border-radius:20px;max-width:400px;margin:20px auto;box-shadow:0 4px 10px #0002}
-button{background:#FF9800;color:white;border:0;padding:12px 20px;border-radius:20px;font-size:18px;margin:5px}
-input{padding:10px;border-radius:10px;border:1px solid #ccc;width:80%}
+body{font-family:sans-serif;background:#111;color:white;text-align:center;margin:0;padding:20px}
+h1{font-size:24px} button{background:#FF9800;color:white;border:0;padding:15px;border-radius:30px;font-size:20px;margin:8px;width:90%}
+#fleche{font-size:180px;transition:transform 0.3s;display:block;margin:20px auto}
+.card{background:#222;padding:20px;border-radius:20px;max-width:400px;margin:auto}
 </style></head>
 <body>
-<h1>🏠 Famille Thompson</h1>
-<div class="card"><h2>✅ Mes Tâches</h2><p id="liste">Vaisselle - Maman<br>Devoirs - Enfants</p>
-<input id="tache" placeholder="Nouvelle tâche..."><br><br>
-<button onclick="ajouter()">+ Ajouter</button></div>
-<div class="card"><h2>📅 Aujourd'hui</h2><p id="date"></p><button onclick="alert('Bravo ! 🎉')">J'ai fini !</button></div>
+<h1>🧭 Retrouver Famille Thompson</h1>
+<div class="card">
+<p>Qui tu cherches ?</p>
+<button onclick="chercher('Maman')">👩 Maman</button>
+<button onclick="chercher('Papa')">👨 Papa</button>
+<button onclick="chercher('Enfant')">🧒 Enfant</button>
+<div id="fleche">⬆️</div>
+<h2 id="nom">Choisis quelqu'un...</h2>
+<p id="info">La flèche va te montrer le chemin</p>
+<button onclick="demarrer()">📍 Activer ma position</button>
+</div>
 <script>
-document.getElementById('date').innerText = new Date().toLocaleDateString('fr-CA');
-function ajouter(){let t=document.getElementById('tache').value; if(t){document.getElementById('liste').innerHTML+='<br>'+t; document.getElementById('tache').value='';}}
+let cible={lat:45.307,lng:-73.253}; // Saint-Jean-sur-Richelieu
+let maPos=null;
+function chercher(nom){document.getElementById('nom').innerText='On cherche '+nom+'...'; document.getElementById('info').innerText='Tourne-toi, suis la flèche !';}
+function demarrer(){
+  if(navigator.geolocation){navigator.geolocation.watchPosition(p=>{
+    maPos=p.coords;
+    let lat1=maPos.latitude*Math.PI/180, lat2=cible.lat*Math.PI/180;
+    let dLng=(cible.lng-maPos.longitude)*Math.PI/180;
+    let y=Math.sin(dLng)*Math.cos(lat2);
+    let x=Math.cos(lat1)*Math.sin(lat2)-Math.sin(lat1)*Math.cos(lat2)*Math.cos(dLng);
+    let cap=Math.atan2(y,x)*180/Math.PI;
+    document.getElementById('fleche').style.transform='rotate('+cap+'deg)';
+    let dist=Math.round(p.coords.accuracy);
+    document.getElementById('info').innerText='Direction calculée ! Marche dans le sens de la flèche !';
+  }); alert('Position activée ! Tourne ton téléphone !');}
+  else alert('GPS non dispo');
+}
+window.addEventListener('deviceorientation',e=>{
+  if(e.alpha!=null){document.getElementById('fleche').style.transform='rotate('+e.alpha+'deg)';}
+});
 </script></body></html>
