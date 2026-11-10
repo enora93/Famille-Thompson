@@ -15,6 +15,7 @@ button{border:0;padding:12px 16px;border-radius:30px;font-size:15px;margin:5px;c
 .aiguille:after{content:'';position:absolute;left:-14px;top:0;border-left:14px solid transparent;border-right:14px solid transparent;border-top:105px solid white}
 .point{position:absolute;font-weight:bold;font-size:20px}.n{top:8px;left:50%;color:#FF3B30}.s{bottom:8px;left:50%}.e{right:12px;top:50%}.o{left:12px;top:50%}
 .centre{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:22px;height:22px;background:white;border-radius:50%;border:4px solid #111;z-index:2}
+.codebox{background:#000;border:2px dashed #FFD700;padding:15px;border-radius:15px;font-size:22px;word-break:break-all;margin:10px}
 </style></head>
 <body>
 <h1>✦ FAMILLE THOMPSON ✦</h1>
@@ -26,8 +27,14 @@ button{border:0;padding:12px 16px;border-radius:30px;font-size:15px;margin:5px;c
 <br><label style="color:#AAA">Sa couleur :</label><br>
 <input type="color" id="couleur" value="#FFFFFF" style="width:70px;height:45px;background:none;border:none">
 <br><button class="btn-add" onclick="ajouter()">Ajouter a ma famille</button>
-<br><button style="background:#FFD700;color:black;width:90%" onclick="partagerFamille()">🔗 PARTAGER MA FAMILLE A MARC</button>
-<p style="color:#AAA;font-size:12px">Clique ici, puis envoie le lien a Marc par SMS / Messenger. Quand il ouvre le lien, il aura la meme famille que toi !</p>
+</div>
+
+<div class="card">
+<h3>🔑 Entrer le CODE de quelqu'un</h3>
+<p style="color:#AAA;font-size:13px">Marc te donne son code ? Colle-le ici !</p>
+<input id="codeEntree" placeholder="Colle le code ici">
+<br><button style="background:#FFD700;color:black;width:90%" onclick="entrerCode()">Valider le CODE</button>
+<div id="monCodeAffiche"></div>
 </div>
 
 <div class="card"><h3>Ma Famille</h3><div id="liste"></div></div>
@@ -43,29 +50,8 @@ button{border:0;padding:12px 16px;border-radius:30px;font-size:15px;margin:5px;c
 <script>
 var famille = [];
 try { famille = JSON.parse(localStorage.getItem('famille3') || '[]'); } catch(e){ famille = []; }
-
-// SI ON OUVRE UN LIEN PARTAGE, ON RECUPERE LA FAMILLE
-var params = new URLSearchParams(window.location.search);
-if(params.get('f')){
-  try{
-    var recu = JSON.parse(decodeURIComponent(params.get('f')));
-    famille = recu; localStorage.setItem('famille3', JSON.stringify(famille));
-    alert('Famille recue ! 🎉 Tu as maintenant la meme famille !');
-  }catch(e){}
-}
-if(params.get('pos')){
-  try{
-    var p = params.get('pos').split(',');
-    var nomPos = decodeURIComponent(p[0]); var latPos = parseFloat(p[1]); var lngPos = parseFloat(p[2]);
-    var trouve = false;
-    for(var k=0;k<famille.length;k++){ if(famille[k].nom.toLowerCase()==nomPos.toLowerCase()){ famille[k].lat=latPos; famille[k].lng=lngPos; trouve=true; } }
-    if(!trouve){ famille.push({nom:nomPos, couleur:'#FFFFFF', lat:latPos, lng:lngPos}); }
-    localStorage.setItem('famille3', JSON.stringify(famille));
-    alert(nomPos + ' est a : ' + latPos + ' ! Clique sur Chercher !');
-  }catch(e){}
-}
 if(famille.length==0){ famille = [{nom:'Maman',couleur:'#FF2E7E',lat:null,lng:null},{nom:'Papa',couleur:'#2E86FF',lat:null,lng:null}]; sauver(); }
-var maLat=null, maLng=null, heading=0, cibleIndex=-1, monNom='Moi';
+var maLat=null, maLng=null, heading=0, cibleIndex=-1;
 function sauver(){ localStorage.setItem('famille3', JSON.stringify(famille)); afficher(); }
 function ajouter(){
   var n = document.getElementById('nom').value;
@@ -73,7 +59,7 @@ function ajouter(){
   var c = document.getElementById('couleur').value;
   famille.push({nom:n, couleur:c, lat:null, lng:null});
   document.getElementById('nom').value = '';
-  sauver(); alert(n + ' ajoute ! 🎉 Maintenant clique sur PARTAGER pour l\'envoyer a Marc !');
+  sauver(); alert(n + ' ajoute ! 🎉');
 }
 function afficher(){
   var html = '';
@@ -81,7 +67,7 @@ function afficher(){
     var m = famille[i];
     var txt = 'white'; if(m.couleur.toLowerCase() == '#ffffff'){ txt = 'black'; }
     var pos = 'Pas de position'; if(m.lat){ pos = 'Position recue !'; }
-    html += '<div class="membre"><div class="rond" style="background:'+m.couleur+';color:'+txt+'">'+m.nom.charAt(0).toUpperCase()+'</div><div style="flex:1;text-align:left"><b>'+m.nom+'</b><br><small style="color:#AAA">'+pos+'</small></div><button style="background:#333;color:white" onclick="jeSuisIci('+i+')">Je suis ici</button><button style="background:'+m.couleur+';color:'+txt+'" onclick="chercher('+i+')">Chercher</button><button onclick="supp('+i+')" style="background:#333;color:white">X</button></div>';
+    html += '<div class="membre"><div class="rond" style="background:'+m.couleur+';color:'+txt+'">'+m.nom.charAt(0).toUpperCase()+'</div><div style="flex:1;text-align:left"><b>'+m.nom+'</b><br><small style="color:#AAA">'+pos+'</small></div><button style="background:#FFD700;color:black" onclick="jeSuisIci('+i+')">Mon CODE</button><button style="background:'+m.couleur+';color:'+txt+'" onclick="chercher('+i+')">Chercher</button><button onclick="supp('+i+')" style="background:#333;color:white">X</button></div>';
   }
   document.getElementById('liste').innerHTML = html;
 }
@@ -89,17 +75,27 @@ function supp(i){ famille.splice(i,1); sauver(); }
 function jeSuisIci(i){
   if(maLat==null){ alert('Active le GPS en bas d\'abord !'); return; }
   famille[i].lat = maLat; famille[i].lng = maLng; sauver();
-  // CREE UN LIEN DE POSITION A ENVOYER
-  var lien = window.location.origin + window.location.pathname + '?pos=' + encodeURIComponent(famille[i].nom) + ',' + maLat + ',' + maLng;
-  if(navigator.share){ navigator.share({title:'Ma position', text:'Je suis ici ! Clique pour me trouver !', url:lien}); }
-  else { prompt('Copie ce lien et envoie-le a ta famille :', lien); }
+  var code = famille[i].nom + '|' + maLat.toFixed(5) + '|' + maLng.toFixed(5);
+  document.getElementById('monCodeAffiche').innerHTML = '<p style="color:#FFD700">TON CODE A ENVOYER A TA FAMILLE :</p><div class="codebox">' + code + '</div><p style="color:#AAA;font-size:13px">Envoie ce code par SMS a ta famille, ils le collent dans "Entrer le CODE"</p><button style="background:white;color:black" onclick="copierCode(\''+code+'\')">Copier le code</button>';
+  alert('Ton CODE est affiche en haut ! Envoie-le !');
 }
-function chercher(i){ cibleIndex = i; var c = famille[i]; document.getElementById('cherche').innerText = 'On cherche ' + c.nom + '...'; if(!c.lat){ document.getElementById('info').innerText = c.nom + ' doit cliquer "Je suis ici" et t\'envoyer son lien !'; return; } maj(); }
-function partagerFamille(){
-  var lien = window.location.origin + window.location.pathname + '?f=' + encodeURIComponent(JSON.stringify(famille));
-  if(navigator.share){ navigator.share({title:'Notre famille', text:'Voici notre famille ! Ouvre ce lien !', url:lien}); }
-  else { prompt('Copie ce lien et envoie-le a Marc :', lien); }
+function copierCode(c){
+  var temp = document.createElement('textarea'); temp.value = c; document.body.appendChild(temp); temp.select(); document.execCommand('copy'); document.body.removeChild(temp);
+  alert('Code copie ! Colle-le dans ton SMS !');
 }
+function entrerCode(){
+  var code = document.getElementById('codeEntree').value;
+  if(!code || code.indexOf('|')==-1){ alert('Ce code ne marche pas, copie bien tout le code !'); return; }
+  var parts = code.split('|');
+  var nomPos = parts[0]; var latPos = parseFloat(parts[1]); var lngPos = parseFloat(parts[2]);
+  var trouve = false;
+  for(var k=0;k<famille.length;k++){ if(famille[k].nom.toLowerCase()==nomPos.toLowerCase()){ famille[k].lat=latPos; famille[k].lng=lngPos; trouve=true; } }
+  if(!trouve){ famille.push({nom:nomPos, couleur:'#FFFFFF', lat:latPos, lng:lngPos}); }
+  sauver();
+  document.getElementById('codeEntree').value = '';
+  alert(nomPos + ' trouve ! Clique sur Chercher ' + nomPos + ' !');
+}
+function chercher(i){ cibleIndex = i; var c = famille[i]; document.getElementById('cherche').innerText = 'On cherche ' + c.nom + '...'; if(!c.lat){ document.getElementById('info').innerText = c.nom + ' doit cliquer "Mon CODE" et t\'envoyer son code !'; return; } maj(); }
 function maj(){
   if(cibleIndex < 0) return; var c = famille[cibleIndex]; if(!c.lat || maLat==null) return;
   var r = Math.PI/180; var dLat = (c.lat - maLat) * r; var dLng = (c.lng - maLng) * r;
