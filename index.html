@@ -8,6 +8,7 @@ input{padding:14px;border-radius:15px;border:2px solid #333;background:#222;colo
 button{border:0;padding:12px 16px;border-radius:30px;font-size:15px;margin:5px;cursor:pointer;font-weight:bold}
 .btn-add{background:white;color:black;width:90%}
 .membre{padding:12px;border-radius:18px;margin:8px;display:flex;align-items:center;gap:10px;background:#222}
+.moi{border:2px solid #FFD700}
 .rond{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:bold;flex-shrink:0}
 .boussole{width:260px;height:260px;border-radius:50%;border:3px solid #333;background:#111;margin:15px auto;position:relative}
 .aiguille{position:absolute;left:50%;top:50%;width:0;height:0}
@@ -20,17 +21,26 @@ button{border:0;padding:12px 16px;border-radius:30px;font-size:15px;margin:5px;c
 <h1>✦ FAMILLE THOMPSON ✦</h1>
 <p id="status" style="color:#AAA">Clique sur ACTIVER LE GPS en bas</p>
 
-<div class="card">
-<h3>Ajouter quelqu'un</h3>
-<input id="nom" placeholder="Prenom : ex: Marc">
-<br><input type="color" id="couleur" value="#FFFFFF" style="width:70px;height:45px;background:none;border:none">
-<br><button class="btn-add" onclick="ajouter()">Ajouter</button>
+<div class="card" id="setupCard">
+<h3>👋 C'est le telephone de qui ?</h3>
+<p style="color:#AAA;font-size:13px">Choisis UNE fois, apres c'est enregistre !</p>
+<input id="monNomInput" placeholder="Ton prenom : ex: Marc">
+<br><input id="codeGroupeInput" placeholder="Code de famille : ex: THOMPSON">
+<br><button style="background:#FFD700;color:black;width:90%" onclick="setup()">C'est mon telephone !</button>
+<p style="color:#AAA;font-size:12px">Vous devez tous mettre le MEME code de famille !</p>
 </div>
 
 <div class="card">
-<h3>📩 J'ai recu un message de Marc ?</h3>
-<p style="color:#AAA;font-size:13px">Colle juste le message ici, je m'occupe du reste !</p>
-<input id="codeEntree" placeholder="Colle le message de Marc ici">
+<h3>Ma Famille - Groupe : <span id="groupeAffiche" style="color:#FFD700"></span></h3>
+<p>Tu es : <b id="moiAffiche" style="color:#FFD700"></b> <button onclick="changerMoi()" style="background:#333;color:white;font-size:12px">Changer</button></p>
+<input id="nom" placeholder="Ajouter quelqu'un : ex: Marc">
+<br><input type="color" id="couleur" value="#FFFFFF" style="width:70px;height:45px;background:none;border:none">
+<br><button class="btn-add" onclick="ajouter()">Ajouter a ma famille</button>
+</div>
+
+<div class="card">
+<h3>📩 J'ai recu un message ?</h3>
+<input id="codeEntree" placeholder="Colle le message recu ici">
 <br><button style="background:#FFD700;color:black;width:90%" onclick="entrerCode()">Je l'ai trouve !</button>
 </div>
 
@@ -47,8 +57,37 @@ button{border:0;padding:12px 16px;border-radius:30px;font-size:15px;margin:5px;c
 <script>
 var famille = [];
 try { famille = JSON.parse(localStorage.getItem('famille3') || '[]'); } catch(e){ famille = []; }
-if(famille.length==0){ famille = [{nom:'Maman',couleur:'#FF2E7E',lat:null,lng:null},{nom:'Papa',couleur:'#2E86FF',lat:null,lng:null}]; sauver(); }
+var monNom = localStorage.getItem('monNom') || '';
+var codeGroupe = localStorage.getItem('codeGroupe') || '';
 var maLat=null, maLng=null, heading=0, cibleIndex=-1;
+
+function setup(){
+  var n = document.getElementById('monNomInput').value;
+  var g = document.getElementById('codeGroupeInput').value;
+  if(!n || !g){ alert('Ecris ton prenom ET le code de famille !'); return; }
+  monNom = n; codeGroupe = g.toUpperCase();
+  localStorage.setItem('monNom', monNom);
+  localStorage.setItem('codeGroupe', codeGroupe);
+  // Si je n'existe pas dans la liste, je m'ajoute
+  var existe = false;
+  for(var i=0;i<famille.length;i++){ if(famille[i].nom.toLowerCase()==monNom.toLowerCase()){ existe=true; } }
+  if(!existe){ famille.push({nom:monNom, couleur:'#FFD700', lat:null, lng:null}); }
+  sauver(); majSetup();
+  alert('Bienvenue ' + monNom + ' ! Groupe : ' + codeGroupe);
+}
+function changerMoi(){
+  if(confirm('Changer de personne ?')){ localStorage.removeItem('monNom'); monNom=''; majSetup(); }
+}
+function majSetup(){
+  if(monNom){
+    document.getElementById('setupCard').style.display='none';
+    document.getElementById('moiAffiche').innerText = monNom;
+    document.getElementById('groupeAffiche').innerText = codeGroupe;
+  } else {
+    document.getElementById('setupCard').style.display='block';
+  }
+}
+if(famille.length==0){ famille = [{nom:'Maman',couleur:'#FF2E7E',lat:null,lng:null},{nom:'Papa',couleur:'#2E86FF',lat:null,lng:null}]; sauver(); }
 function sauver(){ localStorage.setItem('famille3', JSON.stringify(famille)); afficher(); }
 function ajouter(){
   var n = document.getElementById('nom').value;
@@ -56,36 +95,44 @@ function ajouter(){
   var c = document.getElementById('couleur').value;
   famille.push({nom:n, couleur:c, lat:null, lng:null});
   document.getElementById('nom').value = '';
-  sauver(); alert(n + ' ajoute !');
+  sauver();
 }
 function afficher(){
   var html = '';
   for(var i=0; i<famille.length; i++){
     var m = famille[i];
     var txt = 'white'; if(m.couleur.toLowerCase() == '#ffffff'){ txt = 'black'; }
+    var estMoi = (monNom && m.nom.toLowerCase()==monNom.toLowerCase());
     var pos = 'Pas de position'; if(m.lat){ pos = 'Trouve !'; }
-    html += '<div class="membre"><div class="rond" style="background:'+m.couleur+';color:'+txt+'">'+m.nom.charAt(0).toUpperCase()+'</div><div style="flex:1;text-align:left"><b>'+m.nom+'</b><br><small style="color:#AAA">'+pos+'</small></div><button style="background:#FFD700;color:black" onclick="envoyer('+i+')">📤 Envoyer ma position</button><button style="background:'+m.couleur+';color:'+txt+'" onclick="chercher('+i+')">Chercher</button><button onclick="supp('+i+')" style="background:#333;color:white">X</button></div>';
+    var classe = 'membre'; if(estMoi){ classe += ' moi'; }
+    var boutons = '';
+    if(estMoi){
+      boutons = '<button style="background:#FFD700;color:black" onclick="envoyer('+i+')">📤 C\'EST MOI, envoyer ma position</button>';
+    } else {
+      boutons = '<button style="background:'+m.couleur+';color:'+txt+'" onclick="chercher('+i+')">Chercher '+m.nom+'</button>';
+    }
+    html += '<div class="'+classe+'"><div class="rond" style="background:'+m.couleur+';color:'+txt+'">'+m.nom.charAt(0).toUpperCase()+'</div><div style="flex:1;text-align:left"><b>'+m.nom+'</b> '+(estMoi?'(C\'EST MOI ⭐)':'')+'<br><small style="color:#AAA">'+pos+'</small></div>'+boutons+'<button onclick="supp('+i+')" style="background:#333;color:white">X</button></div>';
   }
   document.getElementById('liste').innerHTML = html;
 }
 function supp(i){ famille.splice(i,1); sauver(); }
 function envoyer(i){
+  if(!monNom){ alert('Dis-moi d\'abord c\'est le telephone de qui !'); return; }
+  if(famille[i].nom.toLowerCase() != monNom.toLowerCase()){ alert('Tu ne peux pas envoyer la position de quelqu\'un d\'autre !'); return; }
   if(maLat==null){ alert('Active le GPS en bas d\'abord !'); return; }
   famille[i].lat = maLat; famille[i].lng = maLng; sauver();
-  var message = 'Coucou c\'est ' + famille[i].nom + ' ! Viens me trouver ❤️ CODE:' + famille[i].nom + '|' + maLat.toFixed(5) + '|' + maLng.toFixed(5);
-  if(navigator.share){
-    navigator.share({title:'Viens me trouver', text:message});
-  } else {
-    var temp = document.createElement('textarea'); temp.value = message; document.body.appendChild(temp); temp.select(); document.execCommand('copy'); document.body.removeChild(temp);
-    alert('Message copie ! Colle-le dans ton SMS !');
-  }
+  var message = 'Coucou groupe ' + codeGroupe + ' ! Viens me trouver ❤️ CODE:' + codeGroupe + '|' + famille[i].nom + '|' + maLat.toFixed(5) + '|' + maLng.toFixed(5);
+  if(navigator.share){ navigator.share({title:'Viens me trouver', text:message}); }
+  else { alert(message); }
 }
 function entrerCode(){
   var texte = document.getElementById('codeEntree').value;
-  if(!texte || texte.indexOf('CODE:')==-1){ alert('Colle tout le message de Marc, avec CODE: dedans !'); return; }
+  if(!texte || texte.indexOf('CODE:')==-1){ alert('Colle tout le message recu !'); return; }
   var code = texte.split('CODE:')[1].trim();
   var parts = code.split('|');
-  var nomPos = parts[0]; var latPos = parseFloat(parts[1]); var lngPos = parseFloat(parts[2]);
+  var groupeRecu = parts[0]; var nomPos = parts[1]; var latPos = parseFloat(parts[2]); var lngPos = parseFloat(parts[3]);
+  if(groupeRecu.toUpperCase() != codeGroupe.toUpperCase()){ alert('Ce message n\'est pas pour ton groupe ' + codeGroupe + ' ! C\'est pour le groupe ' + groupeRecu); return; }
+  if(monNom && nomPos.toLowerCase()==monNom.toLowerCase()){ alert('C\'est ton propre message !'); return; }
   var trouve = false;
   for(var k=0;k<famille.length;k++){ if(famille[k].nom.toLowerCase()==nomPos.toLowerCase()){ famille[k].lat=latPos; famille[k].lng=lngPos; trouve=true; } }
   if(!trouve){ famille.push({nom:nomPos, couleur:'#FFFFFF', lat:latPos, lng:lngPos}); }
@@ -112,5 +159,5 @@ function activer(){
   alert('GPS demande ! Dis Autoriser !');
 }
 window.addEventListener('deviceorientation', function(e){ if(e.webkitCompassHeading != null){ heading = e.webkitCompassHeading; } else if(e.alpha != null){ heading = 360 - e.alpha; } maj(); });
-afficher();
-</script></body></html
+majSetup(); afficher();
+</script></body></html>
