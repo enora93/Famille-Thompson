@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Famille Thompson</title>
+<style>
+body{font-family:sans-serif;background:#FFF8E1;margin:0;padding:20px;text-align:center}
+h1{color:#E65100} .card{background:white;padding:20px;border-radius:20px;max-width:400px;margin:20px auto;box-shadow:0 4px 10px #0002}
+button{background:#FF9800;color:white;border:0;padding:12px 20px;border-radius:20px;font-size:18px;margin:5px}
+input{padding:10px;border-radius:10px;border:1px solid #ccc;width:80%}
+</style></head>
+<body>
+<h1>🏠 Famille Thompson</h1>
+<div class="card"><h2>✅ Mes Tâches</h2><p id="liste">Vaisselle - Maman<br>Devoirs - Enfants</p>
+<input id="tache" placeholder="Nouvelle tâche..."><br><br>
+<button onclick="ajouter()">+ Ajouter</button></div>
+<div class="card"><h2>📅 Aujourd'hui</h2><p id="date"></p><button onclick="alert('Bravo ! 🎉')">J'ai fini !</button></div>
+<script>
+document.getElementById('date').innerText = new Date().toLocaleDateString('fr-CA');
+function ajouter(){let t=document.getElementById('tache').value; if(t){document.getElementById('liste').innerHTML+='<br>'+t; document.getElementById('tache').value='';}}
+</script></body></html>
