@@ -1,43 +1,76 @@
 <!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Retrouver Famille Thompson</title>
+<title>Famille Thompson</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0A0A0A">
 <style>
-body{font-family:sans-serif;background:#111;color:white;text-align:center;margin:0;padding:20px}
-h1{font-size:24px} button{background:#FF9800;color:white;border:0;padding:15px;border-radius:30px;font-size:20px;margin:8px;width:90%}
-#fleche{font-size:180px;transition:transform 0.3s;display:block;margin:20px auto}
-.card{background:#222;padding:20px;border-radius:20px;max-width:400px;margin:auto}
+body{font-family:sans-serif;background:#0A0A0A;color:white;text-align:center;margin:0;padding:15px}
+h1{letter-spacing:2px}
+.card{background:#1A1A1A;padding:18px;border-radius:24px;max-width:420px;margin:12px auto;border:1px solid #2A2A2A}
+input{padding:14px;border-radius:15px;border:2px solid #333;background:#222;color:white;width:85%;margin:6px;font-size:16px}
+button{border:0;padding:12px 18px;border-radius:30px;font-size:15px;margin:5px;cursor:pointer;font-weight:bold}
+.btn-add{background:white;color:black;width:90%}
+.membre{padding:12px 16px;border-radius:18px;margin:8px;display:flex;align-items:center;gap:12px;background:#222;border-left:6px solid var(--c)}
+.rond{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:bold;color:#000;flex-shrink:0}
+.rond.blanc{color:#000;border:2px solid #555}
+/* BOUSSOLE */
+.boussole{width:260px;height:260px;border-radius:50%;border:3px solid #333;background:radial-gradient(circle,#222 0%,#111 70%);margin:15px auto;position:relative;box-shadow:0 0 40px #000}
+.aiguille{position:absolute;left:50%;top:50%;width:0;height:0;transition:transform .3s}
+.aiguille:before{content:'';position:absolute;left:-14px;top:-105px;border-left:14px solid transparent;border-right:14px solid transparent;border-bottom:105px solid #FF3B30}
+.aiguille:after{content:'';position:absolute;left:-14px;top:0;border-left:14px solid transparent;border-right:14px solid transparent;border-top:105px solid white}
+.point{position:absolute;font-weight:bold;font-size:20px}
+.n{top:8px;left:50%;transform:translateX(-50%);color:#FF3B30}
+.s{bottom:8px;left:50%;transform:translateX(-50%)}
+.e{right:12px;top:50%;transform:translateY(-50%)}
+.o{left:12px;top:50%;transform:translateY(-50%)}
+.centre{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:22px;height:22px;background:white;border-radius:50%;border:4px solid #111;z-index:2}
 </style></head>
 <body>
-<h1>🧭 Retrouver Famille Thompson</h1>
+<h1>✦ FAMILLE THOMPSON ✦</h1>
+<p style="color:#AAA">Retrouve ta famille</p>
+
 <div class="card">
-<p>Qui tu cherches ?</p>
-<button onclick="chercher('Maman')">👩 Maman</button>
-<button onclick="chercher('Papa')">👨 Papa</button>
-<button onclick="chercher('Enfant')">🧒 Enfant</button>
-<div id="fleche">⬆️</div>
-<h2 id="nom">Choisis quelqu'un...</h2>
-<p id="info">La flèche va te montrer le chemin</p>
-<button onclick="demarrer()">📍 Activer ma position</button>
+<h3>➕ Ajouter quelqu'un</h3>
+<input id="nom" placeholder="Prénom : ex: Léa">
+<br><label style="color:#AAA">Sa couleur :</label><br>
+<input type="color" id="couleur" value="#FFFFFF" style="width:70px;height:45px;background:none;border:none;padding:0">
+<br>
+<button class="btn-add" onclick="ajouter()">Ajouter à ma famille</button>
 </div>
+
+<div class="card"><h3>Ma Famille</h3><div id="liste"></div></div>
+
+<div class="card">
+<h3 id="cherche">Choisis quelqu'un...</h3>
+<div class="boussole">
+<span class="point n">N</span><span class="point s">S</span><span class="point e">E</span><span class="point o">O</span>
+<div class="aiguille" id="aiguille"></div>
+<div class="centre"></div>
+</div>
+<p id="info" style="color:#AAA">Tourne-toi, suis la pointe rouge !</p>
+<button style="background:white;color:black" onclick="activer()">📍 Activer la boussole</button>
+</div>
+
 <script>
-let cible={lat:45.307,lng:-73.253}; // Saint-Jean-sur-Richelieu
-let maPos=null;
-function chercher(nom){document.getElementById('nom').innerText='On cherche '+nom+'...'; document.getElementById('info').innerText='Tourne-toi, suis la flèche !';}
-function demarrer(){
-  if(navigator.geolocation){navigator.geolocation.watchPosition(p=>{
-    maPos=p.coords;
-    let lat1=maPos.latitude*Math.PI/180, lat2=cible.lat*Math.PI/180;
-    let dLng=(cible.lng-maPos.longitude)*Math.PI/180;
-    let y=Math.sin(dLng)*Math.cos(lat2);
-    let x=Math.cos(lat1)*Math.sin(lat2)-Math.sin(lat1)*Math.cos(lat2)*Math.cos(dLng);
-    let cap=Math.atan2(y,x)*180/Math.PI;
-    document.getElementById('fleche').style.transform='rotate('+cap+'deg)';
-    let dist=Math.round(p.coords.accuracy);
-    document.getElementById('info').innerText='Direction calculée ! Marche dans le sens de la flèche !';
-  }); alert('Position activée ! Tourne ton téléphone !');}
-  else alert('GPS non dispo');
+let famille=JSON.parse(localStorage.getItem('famille2')||'[]');
+if(famille.length==0){famille=[{nom:'Maman',couleur:'#FF2E7E'},{nom:'Papa',couleur:'#2E86FF'}]; sauver();}
+function sauver(){localStorage.setItem('famille2',JSON.stringify(famille)); afficher();}
+function ajouter(){
+  let n=document.getElementById('nom').value.trim(); if(!n) return alert('Écris un prénom !');
+  famille.push({nom:n, couleur:document.getElementById('couleur').value});
+  document.getElementById('nom').value=''; sauver();
 }
-window.addEventListener('deviceorientation',e=>{
-  if(e.alpha!=null){document.getElementById('fleche').style.transform='rotate('+e.alpha+'deg)';}
-});
+function afficher(){
+  document.getElementById('liste').innerHTML=famille.map((m,i)=>{
+    let lettre=m.nom[0].toUpperCase();
+    let txt=(m.couleur.toLowerCase()=='#ffffff')?'black':'white';
+    let styleTxt=(m.couleur.toLowerCase()=='#ffffff')?'color:black':''; 
+    return <div class="membre" style="--c:${m.couleur}"><div class="rond" style="background:${m.couleur};color:${txt}">${lettre}</div><b style="flex:1;text-align:left">${m.nom}</b><button style="background:${m.couleur};color:${txt}" onclick="chercher('${m.nom}')">Chercher</button><button onclick="supp(${i})" style="background:#333;color:white">✕</button></div>
+  }).join('');
+}
+function supp(i){famille.splice(i,1); sauver();}
+function chercher(nom){document.getElementById('cherche').innerText='On cherche '+nom+'...'; document.getElementById('info').innerText='Suis la pointe ROUGE de la boussole !';}
+function activer(){ if(navigator.geolocation){navigator.geolocation.getCurrentPosition(()=>{document.getElementById('info').innerText='Boussole activée ! Tourne ton téléphone !';});} }
+window.addEventListener('deviceorientation',e=>{ if(e.alpha!=null) document.getElementById('aiguille').style.transform='translate(-50%,-50%) rotate('+e.alpha+'deg)'; });
+afficher();
 </script></body></html>
