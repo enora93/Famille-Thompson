@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Famille Thompson - Retrouve ta famille</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 <style>
 *{box-sizing:border-box}
 body{background:#0A0A0A;color:#fff;text-align:center;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;padding:14px 14px 40px}
@@ -20,6 +22,7 @@ button{border:0;padding:13px 16px;border-radius:30px;font-size:15px;margin:5px 0
 .membre{padding:12px;border-radius:18px;margin:8px 0;display:flex;align-items:center;gap:10px;background:#222}
 .moi{border:2px solid #FFD700}
 .rond{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;flex-shrink:0}
+.live{color:#2ecc71;font-size:12px;font-weight:800}
 .boussole{width:260px;height:260px;border-radius:50%;border:3px solid #333;background:#111;margin:15px auto;position:relative}
 .aiguille{position:absolute;left:50%;top:50%;width:0;height:0;transform:translate(-50%,-50%)}
 .aiguille:before{content:'';position:absolute;left:-14px;top:-105px;border-left:14px solid transparent;border-right:14px solid transparent;border-bottom:105px solid #FF3B30}
@@ -31,110 +34,85 @@ button{border:0;padding:13px 16px;border-radius:30px;font-size:15px;margin:5px 0
 .o{left:12px;top:50%;transform:translateY(-50%)}
 .centre{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:22px;height:22px;background:#fff;border-radius:50%;border:4px solid #111;z-index:2}
 .ok{background:#1a2e1a;border:1px solid #2ecc71}
-#msgBox{display:none;background:#222;border:1px solid #FFD700;border-radius:14px;padding:12px;margin-top:10px;word-break:break-word;font-size:13px;text-align:left}
 </style>
 </head>
 <body>
 <h1>✦ FAMILLE THOMPSON ✦</h1>
+<p class="live" id="liveStatus">● EN DIRECT - non connecté</p>
 
-<!-- 1. GPS EN HAUT -->
 <div class="card" id="gpsCard" style="text-align:center">
 <h3>1. Active ton GPS</h3>
-<p class="muted">C'est la première chose à faire !</p>
 <p id="status" style="color:#AAA">GPS pas encore activé</p>
 <button class="btn-white btn-big" onclick="activer()">📍 ACTIVER LE GPS</button>
 </div>
 
-<!-- 2. PSEUDO + CODE SECRET -->
 <div class="card" id="setupCard">
 <h3>2. C'est qui ?</h3>
-<p class="muted">Choisis UNE fois, après c'est enregistré !</p>
 <label style="font-size:13px;color:#AAA">Ton pseudo :</label>
 <input id="monNomInput" placeholder="Ex: Jenny">
 <label style="font-size:13px;color:#AAA">Code secret de ton partenaire :</label>
 <input id="codeGroupeInput" placeholder="Ex: THOMPSON">
-<p class="muted">Mettez le <b>MÊME code secret</b>, toi et ton partenaire !</p>
-<button class="btn-gold" onclick="setup()">C'est moi !</button>
+<p class="muted">Mettez le <b>MÊME code secret</b> !</p>
+<button class="btn-gold" onclick="setup()">Se connecter en direct !</button>
 </div>
 
 <div class="card" style="text-align:center">
 <p>Tu es : <b id="moiAffiche" style="color:#FFD700"></b> <button class="btn-dark" onclick="changerMoi()">Changer</button></p>
 <p class="muted">Code secret : <b id="codeAffiche" style="color:#FFD700"></b></p>
+<button class="btn-gold" onclick="partagerLien()">📤 Partager le lien de connexion à ton partenaire</button>
+<p class="muted">Il clique, il met son pseudo, et il apparaît dans ta liste !</p>
 </div>
 
-<!-- 3. PERSONNES CONNECTÉES - PLUS DE MAMAN / PAPA PAR DÉFAUT -->
 <div class="card">
-<h3>Personnes connectées avec ce code</h3>
-<p class="muted">Ton partenaire apparaît ici tout seul quand il te partage son lien.</p>
+<h3>Personnes connectées avec ce code <span class="live">● LIVE</span></h3>
+<p class="muted">Ils apparaissent tout seuls, et bougent en direct.</p>
 <div id="liste"></div>
-<div id="listeVide" class="muted" style="padding:12px">Personne pour l'instant...<br>Partage ton lien à ton partenaire !</div>
+<div id="listeVide" class="muted" style="padding:12px">Personne pour l'instant...<br>Partage ton lien !</div>
 </div>
 
-<!-- 4. BOUSSOLE + C'EST MOI = PARTAGER -->
 <div class="card" style="text-align:center">
 <h3 id="cherche">Choisis quelqu'un...</h3>
 <div class="boussole"><span class="point n">N</span><span class="point s">S</span><span class="point e">E</span><span class="point o">O</span><div class="aiguille" id="aiguille"></div><div class="centre"></div></div>
 <h2 id="distance" style="color:#FFD700">-- m</h2>
 <p id="info" class="muted">Tourne-toi, suis la pointe rouge !</p>
 <p id="heurePos" class="muted"></p>
-
-<!-- LE NOUVEAU C'EST MOI : ÇA PARTAGE LE LIEN, PLUS DE MESSAGE À COPIER -->
-<button class="btn-gold btn-big" onclick="partagerMoi()">📤 C'EST MOI - Partager ma position</button>
-<p class="muted">Ça envoie un lien à ton partenaire.<br>Il clique dessus et il te trouve, c'est tout !</p>
-<div id="msgBox"></div>
 </div>
 
 <script>
-var famille=[];
-try{famille=JSON.parse(localStorage.getItem('famille3')||'[]')}catch(e){famille=[]}
-// PLUS DE MAMAN / PAPA PAR DÉFAUT - on part de zéro
-var monNom=localStorage.getItem('monNom')||'';
-var codeGroupe=localStorage.getItem('codeGroupe')||'';
-var maLat=null,maLng=null,heading=0,cibleIndex=-1;
+const firebaseConfig = {
+  apiKey: "AIzaSyCP0pO5aAoyBouv8BFTf0FV_P1vbEef6p8",
+  authDomain: "famille-thompson.firebaseapp.com",
+  databaseURL: "https://famille-thompson-default-rtdb.firebaseio.com",
+  projectId: "famille-thompson",
+  storageBucket: "famille-thompson.firebasestorage.app",
+  messagingSenderId: "766870490529",
+  appId: "1:766870490529:web:8139caa3d11796628dcfe0"
+};
 
-// LIRE LE LIEN PARTAGÉ : ?code=THOMPSON&qui=Jenny&lat=...&lng=...
-function lireLien(){
-  var p=new URLSearchParams(window.location.search);
-  var code=p.get('code');
-  var qui=p.get('qui');
-  var lat=parseFloat(p.get('lat'));
-  var lng=parseFloat(p.get('lng'));
-  if(code && qui && !isNaN(lat)){
-    codeGroupe=code.toUpperCase();
-    localStorage.setItem('codeGroupe',codeGroupe);
-    // Si c'est pas moi, je l'ajoute / je mets à jour sa position
-    if(!monNom || qui.toLowerCase()!==monNom.toLowerCase()){
-      var trouve=false;
-      for(var k=0;k<famille.length;k++){
-        if(famille[k].nom.toLowerCase()===qui.toLowerCase()){
-          famille[k].lat=lat; famille[k].lng=lng; famille[k].heure=Date.now(); trouve=true;
-        }
-      }
-      if(!trouve) famille.push({nom:qui,couleur:'#FFFFFF',lat:lat,lng:lng,heure:Date.now()});
-      sauver();
-      setTimeout(function(){ alert(qui+' t’a partagé sa position ! Clique sur Chercher '+qui); }, 300);
-    }
-  } else if(code){
-    codeGroupe=code.toUpperCase();
-    localStorage.setItem('codeGroupe',codeGroupe);
-    document.getElementById('codeGroupeInput').value=codeGroupe;
-  }
-}
+firebase.initializeApp(firebaseConfig);
+var db = firebase.database();
+
+var famille = [];
+var monNom = localStorage.getItem('monNom') || '';
+var codeGroupe = localStorage.getItem('codeGroupe') || '';
+var maLat=null, maLng=null, heading=0, cibleIndex=-1, currentRef=null;
 
 function setup(){
   var n=document.getElementById('monNomInput').value.trim();
   var g=document.getElementById('codeGroupeInput').value.trim();
-  if(!n||!g){alert('Écris ton pseudo ET le code secret de ton partenaire !');return;}
+  if(!n||!g){alert('Écris ton pseudo ET le code secret !');return;}
   monNom=n; codeGroupe=g.toUpperCase();
   localStorage.setItem('monNom',monNom);
   localStorage.setItem('codeGroupe',codeGroupe);
-  var existe=famille.some(m=>m.nom.toLowerCase()==monNom.toLowerCase());
-  if(!existe) famille.push({nom:monNom,couleur:'#FFD700',lat:null,lng:null});
-  sauver(); majSetup();
-  alert('Bienvenue '+monNom+' ! Code secret : '+codeGroupe);
+  majSetup();
+  connecterLive();
 }
 function changerMoi(){
-  if(confirm('Changer de personne ?')){localStorage.removeItem('monNom'); monNom=''; majSetup();}
+  if(confirm('Changer de personne ?')){
+    if(currentRef) currentRef.off();
+    localStorage.removeItem('monNom'); monNom='';
+    majSetup();
+  }
 }
 function majSetup(){
   if(monNom){
@@ -146,61 +124,72 @@ function majSetup(){
     document.getElementById('moiAffiche').innerText='...';
     document.getElementById('codeAffiche').innerText=codeGroupe || '...';
   }
+  document.getElementById('codeGroupeInput').value=codeGroupe;
 }
-function sauver(){localStorage.setItem('famille3',JSON.stringify(famille)); afficher();}
+function connecterLive(){
+  if(!monNom || !codeGroupe) return;
+  if(currentRef) currentRef.off();
+  currentRef = db.ref('codes/' + codeGroupe + '/membres');
+  document.getElementById('liveStatus').innerText = '● EN DIRECT - Code ' + codeGroupe;
+  currentRef.on('value', function(snapshot){
+    var data = snapshot.val() || {};
+    famille = Object.keys(data).map(function(key){
+      var m = data[key];
+      m.key = key;
+      return m;
+    });
+    afficher();
+    maj();
+  });
+  envoyerPositionFirebase();
+}
+function envoyerPositionFirebase(){
+  if(!monNom || !codeGroupe || maLat==null) return;
+  db.ref('codes/' + codeGroupe + '/membres/' + monNom.toLowerCase()).set({
+    nom: monNom,
+    couleur: '#FFD700',
+    lat: maLat,
+    lng: maLng,
+    heure: Date.now()
+  });
+}
 function fmtHeure(t){
   if(!t) return '';
-  var d=new Date(t);
-  return 'Position reçue à '+d.toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'});
+  return 'Vu à ' + new Date(t).toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'});
 }
 function afficher(){
   var html='';
   for(var i=0;i<famille.length;i++){
     var m=famille[i];
-    var txt=(m.couleur.toLowerCase()=='#ffffff')?'black':'white';
     var estMoi=(monNom&&m.nom.toLowerCase()==monNom.toLowerCase());
     var pos=m.lat?'Trouvé ! '+fmtHeure(m.heure):'Pas encore de position';
     var classe='membre'+(estMoi?' moi':'');
     var boutons=estMoi
       ? '<span style="font-size:12px;color:#AAA">C’est toi</span>'
-      : '<button style="background:'+m.couleur+';color:'+txt+';width:auto" onclick="chercher('+i+')">Chercher '+m.nom+'</button>';
-    html+='<div class="'+classe+'"><div class="rond" style="background:'+m.couleur+';color:'+txt+'">'+m.nom.charAt(0).toUpperCase()+'</div><div style="flex:1;text-align:left"><b>'+m.nom+'</b> '+(estMoi?'(C’EST MOI)':'')+'<br><small style="color:#AAA">'+pos+'</small></div>'+boutons+'<button onclick="supp('+i+')" style="background:#333;color:white;width:auto">X</button></div>';
+      : '<button style="background:'+m.couleur+';color:black;width:auto" onclick="chercher('+i+')">Chercher '+m.nom+'</button>';
+    html+='<div class="'+classe+'"><div class="rond" style="background:'+m.couleur+';color:white">'+m.nom.charAt(0).toUpperCase()+'</div><div style="flex:1;text-align:left"><b>'+m.nom+'</b> '+(estMoi?'(C’EST MOI)':'')+'<br><small style="color:#AAA">'+pos+'</small></div>'+boutons+'</div>';
   }
   document.getElementById('liste').innerHTML=html;
   document.getElementById('listeVide').style.display = famille.length ? 'none' : 'block';
 }
-function supp(i){famille.splice(i,1); sauver();}
-
-// NOUVEAU : PARTAGER = ENVOYER UN LIEN, PLUS DE MESSAGE CODE:
-async function partagerMoi(){
-  if(!monNom){alert('Écris d’abord ton pseudo en haut !');return;}
-  if(!codeGroupe){alert('Écris d’abord ton code secret en haut !');return;}
-  if(maLat==null){alert('Active le GPS en haut d’abord !');return;}
-  var idx=famille.findIndex(m=>m.nom.toLowerCase()==monNom.toLowerCase());
-  if(idx>=0){famille[idx].lat=maLat; famille[idx].lng=maLng; famille[idx].heure=Date.now(); sauver();}
+async function partagerLien(){
+  if(!monNom || !codeGroupe){alert('Connecte-toi d’abord en haut !');return;}
   var base=window.location.href.split('?')[0];
-  var lien=base+'?code='+encodeURIComponent(codeGroupe)+'&qui='+encodeURIComponent(monNom)+'&lat='+maLat.toFixed(5)+'&lng='+maLng.toFixed(5);
-  var texte='Viens me trouver ! Clique sur ce lien : '+lien;
-  var box=document.getElementById('msgBox');
-  box.style.display='block';
-  box.innerHTML='<b>Envoie ce lien à ton partenaire :</b><br><br>'+lien+'<br><br><button class="btn-gold" onclick="copierLien()">Copier le lien</button>';
-  window._lastLien=lien;
-  if(navigator.share){ try{await navigator.share({title:'Viens me trouver',text:texte});}catch(e){} }
-  else { try{await navigator.clipboard.writeText(lien); alert('Lien copié !');}catch(e){} }
-}
-function copierLien(){
-  if(window._lastLien) navigator.clipboard.writeText(window._lastLien).then(()=>alert('Lien copié !'));
+  var lien=base+'?code='+encodeURIComponent(codeGroupe);
+  var texte='Rejoins-moi sur Famille Thompson ! Clique ici : '+lien+' - Notre code secret est : '+codeGroupe;
+  if(navigator.share){ try{await navigator.share({title:'Rejoins-moi',text:texte});}catch(e){} }
+  else { try{await navigator.clipboard.writeText(lien); alert('Lien copié ! Code : '+codeGroupe);}catch(e){} }
 }
 function chercher(i){
   cibleIndex=i;
   var c=famille[i];
   document.getElementById('cherche').innerText='On cherche '+c.nom+'...';
   document.getElementById('heurePos').innerText=c.heure?fmtHeure(c.heure):'';
-  if(!c.lat){document.getElementById('info').innerText=c.nom+' doit cliquer "Partager ma position" !';return;}
+  if(!c.lat){document.getElementById('info').innerText=c.nom+' doit activer son GPS !';return;}
   maj();
 }
 function maj(){
-  if(cibleIndex<0) return;
+  if(cibleIndex<0 || !famille[cibleIndex]) return;
   var c=famille[cibleIndex];
   if(!c.lat||maLat==null) return;
   var r=Math.PI/180;
@@ -214,28 +203,4 @@ function maj(){
   var rot=cap-heading;
   document.getElementById('distance').innerText=Math.round(dist)+' m';
   document.getElementById('info').innerText=(dist<20)?'TU ES TOUT PRÈS !':'Marche vers la pointe ROUGE !';
-  document.getElementById('aiguille').style.transform='translate(-50%,-50%) rotate('+rot+'deg)';
-}
-function activer(){
-  if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function'){
-    DeviceOrientationEvent.requestPermission().catch(()=>{});
-  }
-  if(!navigator.geolocation){alert('Pas de GPS');return;}
-  navigator.geolocation.watchPosition(function(p){
-    maLat=p.coords.latitude; maLng=p.coords.longitude;
-    document.getElementById('status').innerText='GPS OK ✅';
-    document.getElementById('gpsCard').classList.add('ok');
-    maj();
-  },function(e){alert('Autorise la position ! '+e.message);},{enableHighAccuracy:true});
-  alert('GPS demandé ! Dis Autoriser !');
-}
-window.addEventListener('deviceorientation',function(e){
-  if(e.webkitCompassHeading!=null){heading=e.webkitCompassHeading;}
-  else if(e.alpha!=null){heading=360-e.alpha;}
-  maj();
-});
-lireLien();
-majSetup(); afficher();
-</script>
-</body>
-</html>
+  document.getElementById('aiguille').style.transform='translate(-50%,-
