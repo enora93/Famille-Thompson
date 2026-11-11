@@ -30,21 +30,19 @@ button{border:0;padding:13px 16px;border-radius:30px;font-size:15px;margin:5px 0
 .e{right:12px;top:50%;transform:translateY(-50%)}
 .o{left:12px;top:50%;transform:translateY(-50%)}
 .centre{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:22px;height:22px;background:#fff;border-radius:50%;border:4px solid #111;z-index:2}
-textarea{width:100%;min-height:70px;background:#222;color:#fff;border:2px solid #333;border-radius:14px;padding:12px;font-size:14px}
-#msgBox{display:none;background:#222;border:1px solid #FFD700;border-radius:14px;padding:12px;margin-top:10px;word-break:break-word;font-size:13px;text-align:left}
 .ok{background:#1a2e1a;border:1px solid #2ecc71}
+#msgBox{display:none;background:#222;border:1px solid #FFD700;border-radius:14px;padding:12px;margin-top:10px;word-break:break-word;font-size:13px;text-align:left}
 </style>
 </head>
 <body>
 <h1>✦ FAMILLE THOMPSON ✦</h1>
 
-<!-- 1. GPS EN PREMIER, EN HAUT -->
+<!-- 1. GPS EN HAUT -->
 <div class="card" id="gpsCard" style="text-align:center">
 <h3>1. Active ton GPS</h3>
-<p class="muted">C'est la première chose à faire, sinon rien ne marche !</p>
+<p class="muted">C'est la première chose à faire !</p>
 <p id="status" style="color:#AAA">GPS pas encore activé</p>
 <button class="btn-white btn-big" onclick="activer()">📍 ACTIVER LE GPS</button>
-<p class="muted">Dis "Autoriser" quand ton téléphone te le demande.</p>
 </div>
 
 <!-- 2. PSEUDO + CODE SECRET -->
@@ -55,7 +53,7 @@ textarea{width:100%;min-height:70px;background:#222;color:#fff;border:2px solid 
 <input id="monNomInput" placeholder="Ex: Jenny">
 <label style="font-size:13px;color:#AAA">Code secret de ton partenaire :</label>
 <input id="codeGroupeInput" placeholder="Ex: THOMPSON">
-<p class="muted">Vous devez mettre le <b>MÊME code secret</b>, toi et ton partenaire !<br>Sinon vous ne vous verrez pas.</p>
+<p class="muted">Mettez le <b>MÊME code secret</b>, toi et ton partenaire !</p>
 <button class="btn-gold" onclick="setup()">C'est moi !</button>
 </div>
 
@@ -64,39 +62,64 @@ textarea{width:100%;min-height:70px;background:#222;color:#fff;border:2px solid 
 <p class="muted">Code secret : <b id="codeAffiche" style="color:#FFD700"></b></p>
 </div>
 
-<!-- 3. RECEVOIR -->
-<div class="card">
-<h3>J'ai reçu un message ?</h3>
-<textarea id="codeEntree" placeholder="Colle le message reçu ici"></textarea>
-<button class="btn-gold" onclick="entrerCode()">Je l'ai trouvé !</button>
-<p class="muted">La personne apparaît toute seule ci-dessous si son code secret est le même que le tien.</p>
-</div>
-
-<!-- 4. PERSONNES CONNECTÉES - PLUS DE "AJOUTER À LA MAIN" -->
+<!-- 3. PERSONNES CONNECTÉES - PLUS DE MAMAN / PAPA PAR DÉFAUT -->
 <div class="card">
 <h3>Personnes connectées avec ce code</h3>
-<p class="muted">Pas besoin d'ajouter quelqu'un à la main.<br>Quand ton partenaire t'envoie sa position, il apparaît ici.</p>
+<p class="muted">Ton partenaire apparaît ici tout seul quand il te partage son lien.</p>
 <div id="liste"></div>
-<div id="listeVide" class="muted" style="padding:12px">Personne pour l'instant...<br>Envoie ta position à ton partenaire !</div>
+<div id="listeVide" class="muted" style="padding:12px">Personne pour l'instant...<br>Partage ton lien à ton partenaire !</div>
 </div>
 
-<!-- 5. BOUSSOLE -->
+<!-- 4. BOUSSOLE + C'EST MOI = PARTAGER -->
 <div class="card" style="text-align:center">
 <h3 id="cherche">Choisis quelqu'un...</h3>
 <div class="boussole"><span class="point n">N</span><span class="point s">S</span><span class="point e">E</span><span class="point o">O</span><div class="aiguille" id="aiguille"></div><div class="centre"></div></div>
 <h2 id="distance" style="color:#FFD700">-- m</h2>
 <p id="info" class="muted">Tourne-toi, suis la pointe rouge !</p>
 <p id="heurePos" class="muted"></p>
-<button class="btn-gold" onclick="actualiserMoi()">Actualiser ma position et renvoyer</button>
+
+<!-- LE NOUVEAU C'EST MOI : ÇA PARTAGE LE LIEN, PLUS DE MESSAGE À COPIER -->
+<button class="btn-gold btn-big" onclick="partagerMoi()">📤 C'EST MOI - Partager ma position</button>
+<p class="muted">Ça envoie un lien à ton partenaire.<br>Il clique dessus et il te trouve, c'est tout !</p>
 <div id="msgBox"></div>
 </div>
 
 <script>
 var famille=[];
 try{famille=JSON.parse(localStorage.getItem('famille3')||'[]')}catch(e){famille=[]}
+// PLUS DE MAMAN / PAPA PAR DÉFAUT - on part de zéro
 var monNom=localStorage.getItem('monNom')||'';
 var codeGroupe=localStorage.getItem('codeGroupe')||'';
 var maLat=null,maLng=null,heading=0,cibleIndex=-1;
+
+// LIRE LE LIEN PARTAGÉ : ?code=THOMPSON&qui=Jenny&lat=...&lng=...
+function lireLien(){
+  var p=new URLSearchParams(window.location.search);
+  var code=p.get('code');
+  var qui=p.get('qui');
+  var lat=parseFloat(p.get('lat'));
+  var lng=parseFloat(p.get('lng'));
+  if(code && qui && !isNaN(lat)){
+    codeGroupe=code.toUpperCase();
+    localStorage.setItem('codeGroupe',codeGroupe);
+    // Si c'est pas moi, je l'ajoute / je mets à jour sa position
+    if(!monNom || qui.toLowerCase()!==monNom.toLowerCase()){
+      var trouve=false;
+      for(var k=0;k<famille.length;k++){
+        if(famille[k].nom.toLowerCase()===qui.toLowerCase()){
+          famille[k].lat=lat; famille[k].lng=lng; famille[k].heure=Date.now(); trouve=true;
+        }
+      }
+      if(!trouve) famille.push({nom:qui,couleur:'#FFFFFF',lat:lat,lng:lng,heure:Date.now()});
+      sauver();
+      setTimeout(function(){ alert(qui+' t’a partagé sa position ! Clique sur Chercher '+qui); }, 300);
+    }
+  } else if(code){
+    codeGroupe=code.toUpperCase();
+    localStorage.setItem('codeGroupe',codeGroupe);
+    document.getElementById('codeGroupeInput').value=codeGroupe;
+  }
+}
 
 function setup(){
   var n=document.getElementById('monNomInput').value.trim();
@@ -121,7 +144,7 @@ function majSetup(){
   } else {
     document.getElementById('setupCard').style.display='block';
     document.getElementById('moiAffiche').innerText='...';
-    document.getElementById('codeAffiche').innerText='...';
+    document.getElementById('codeAffiche').innerText=codeGroupe || '...';
   }
 }
 function sauver(){localStorage.setItem('famille3',JSON.stringify(famille)); afficher();}
@@ -139,7 +162,7 @@ function afficher(){
     var pos=m.lat?'Trouvé ! '+fmtHeure(m.heure):'Pas encore de position';
     var classe='membre'+(estMoi?' moi':'');
     var boutons=estMoi
-      ? '<button style="background:#FFD700;color:black;width:auto" onclick="envoyer('+i+')">C’EST MOI, envoyer ma position</button>'
+      ? '<span style="font-size:12px;color:#AAA">C’est toi</span>'
       : '<button style="background:'+m.couleur+';color:'+txt+';width:auto" onclick="chercher('+i+')">Chercher '+m.nom+'</button>';
     html+='<div class="'+classe+'"><div class="rond" style="background:'+m.couleur+';color:'+txt+'">'+m.nom.charAt(0).toUpperCase()+'</div><div style="flex:1;text-align:left"><b>'+m.nom+'</b> '+(estMoi?'(C’EST MOI)':'')+'<br><small style="color:#AAA">'+pos+'</small></div>'+boutons+'<button onclick="supp('+i+')" style="background:#333;color:white;width:auto">X</button></div>';
   }
@@ -147,65 +170,33 @@ function afficher(){
   document.getElementById('listeVide').style.display = famille.length ? 'none' : 'block';
 }
 function supp(i){famille.splice(i,1); sauver();}
-function buildMessage(m){
-  return 'Coucou ! Viens me trouver CODE:'+codeGroupe+'|'+m.nom+'|'+maLat.toFixed(5)+'|'+maLng.toFixed(5);
-}
-async function envoyer(i){
+
+// NOUVEAU : PARTAGER = ENVOYER UN LIEN, PLUS DE MESSAGE CODE:
+async function partagerMoi(){
   if(!monNom){alert('Écris d’abord ton pseudo en haut !');return;}
-  if(famille[i].nom.toLowerCase()!=monNom.toLowerCase()){alert('Tu ne peux pas envoyer la position de quelqu’un d’autre !');return;}
+  if(!codeGroupe){alert('Écris d’abord ton code secret en haut !');return;}
   if(maLat==null){alert('Active le GPS en haut d’abord !');return;}
-  famille[i].lat=maLat; famille[i].lng=maLng; famille[i].heure=Date.now(); sauver();
-  var message=buildMessage(famille[i]);
+  var idx=famille.findIndex(m=>m.nom.toLowerCase()==monNom.toLowerCase());
+  if(idx>=0){famille[idx].lat=maLat; famille[idx].lng=maLng; famille[idx].heure=Date.now(); sauver();}
+  var base=window.location.href.split('?')[0];
+  var lien=base+'?code='+encodeURIComponent(codeGroupe)+'&qui='+encodeURIComponent(monNom)+'&lat='+maLat.toFixed(5)+'&lng='+maLng.toFixed(5);
+  var texte='Viens me trouver ! Clique sur ce lien : '+lien;
   var box=document.getElementById('msgBox');
   box.style.display='block';
-  box.innerHTML='<b>Copie ce message et envoie-le à ton partenaire :</b><br><br>'+message+'<br><br><button class="btn-gold" onclick="copierMsg()">Copier le message</button>';
-  window._lastMsg=message;
-  if(navigator.share){
-    try{await navigator.share({title:'Viens me trouver',text:message});}catch(e){}
-  } else {
-    try{await navigator.clipboard.writeText(message); alert('Message copié ! Colle-le dans SMS / Messenger / WhatsApp');}catch(e){alert(message);}
-  }
+  box.innerHTML='<b>Envoie ce lien à ton partenaire :</b><br><br>'+lien+'<br><br><button class="btn-gold" onclick="copierLien()">Copier le lien</button>';
+  window._lastLien=lien;
+  if(navigator.share){ try{await navigator.share({title:'Viens me trouver',text:texte});}catch(e){} }
+  else { try{await navigator.clipboard.writeText(lien); alert('Lien copié !');}catch(e){} }
 }
-function copierMsg(){
-  if(window._lastMsg){navigator.clipboard.writeText(window._lastMsg).then(()=>alert('Copié !'));}
-}
-function actualiserMoi(){
-  var idx=famille.findIndex(m=>monNom&&m.nom.toLowerCase()==monNom.toLowerCase());
-  if(idx<0){alert('Écris d’abord ton pseudo en haut !');return;}
-  envoyer(idx);
-}
-function entrerCode(){
-  var texte=document.getElementById('codeEntree').value;
-  if(!texte||texte.indexOf('CODE:')==-1){alert('Colle tout le message reçu !');return;}
-  var code=texte.split('CODE:')[1].trim();
-  var parts=code.split('|');
-  var groupeRecu=parts[0];
-  var nomPos=parts[1];
-  var latPos=parseFloat(parts[2]);
-  var lngPos=parseFloat(parts[3]);
-  if(!codeGroupe){alert('Mets d’abord ton code secret en haut !');return;}
-  if(groupeRecu.toUpperCase()!=codeGroupe.toUpperCase()){
-    alert('Ce message n’est pas pour toi ! C’est pour le code secret '+groupeRecu+', toi tu as '+codeGroupe);
-    return;
-  }
-  if(monNom&&nomPos.toLowerCase()==monNom.toLowerCase()){alert('C’est ton propre message !');return;}
-  var trouve=false;
-  for(var k=0;k<famille.length;k++){
-    if(famille[k].nom.toLowerCase()==nomPos.toLowerCase()){
-      famille[k].lat=latPos; famille[k].lng=lngPos; famille[k].heure=Date.now(); trouve=true;
-    }
-  }
-  if(!trouve){famille.push({nom:nomPos,couleur:'#FFFFFF',lat:latPos,lng:lngPos,heure:Date.now()});}
-  sauver();
-  document.getElementById('codeEntree').value='';
-  alert(nomPos+' trouvé ! Clique sur Chercher '+nomPos+' !');
+function copierLien(){
+  if(window._lastLien) navigator.clipboard.writeText(window._lastLien).then(()=>alert('Lien copié !'));
 }
 function chercher(i){
   cibleIndex=i;
   var c=famille[i];
   document.getElementById('cherche').innerText='On cherche '+c.nom+'...';
   document.getElementById('heurePos').innerText=c.heure?fmtHeure(c.heure):'';
-  if(!c.lat){document.getElementById('info').innerText=c.nom+' doit cliquer "Envoyer ma position" !';return;}
+  if(!c.lat){document.getElementById('info').innerText=c.nom+' doit cliquer "Partager ma position" !';return;}
   maj();
 }
 function maj(){
@@ -243,6 +234,7 @@ window.addEventListener('deviceorientation',function(e){
   else if(e.alpha!=null){heading=360-e.alpha;}
   maj();
 });
+lireLien();
 majSetup(); afficher();
 </script>
 </body>
