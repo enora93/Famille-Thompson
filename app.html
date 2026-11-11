@@ -79,25 +79,31 @@ button{border:0;padding:13px 16px;border-radius:30px;font-size:15px;margin:5px 0
 </div>
 
 <script>
-const firebaseConfig = {
-  apiKey: "AIzaSyCP0pO5aAoyBouv8BFTf0FV_P1vbEef6p8",
-  authDomain: "famille-thompson.firebaseapp.com",
-  databaseURL: "https://famille-thompson-default-rtdb.firebaseio.com",
-  projectId: "famille-thompson",
-  storageBucket: "famille-thompson.firebasestorage.app",
-  messagingSenderId: "766870490529",
-  appId: "1:766870490529:web:8139caa3d11796628dcfe0"
-};
-
-firebase.initializeApp(firebaseConfig);
-var db = firebase.database();
-
 var famille = [];
 var monNom = localStorage.getItem('monNom') || '';
 var codeGroupe = localStorage.getItem('codeGroupe') || '';
 var maLat=null, maLng=null, heading=0, cibleIndex=-1, currentRef=null;
+var db = null;
+
+// On essaie de démarrer Firebase, mais si ça bloque, on ne bloque PAS les boutons
+try {
+  var firebaseConfig = {
+    apiKey: "AIzaSyCP0pO5aAoyBouv8BFTf0FV_P1vbEef6p8",
+    authDomain: "famille-thompson.firebaseapp.com",
+    databaseURL: "https://famille-thompson-default-rtdb.firebaseio.com",
+    projectId: "famille-thompson",
+    storageBucket: "famille-thompson.firebasestorage.app",
+    messagingSenderId: "766870490529",
+    appId: "1:766870490529:web:8139caa3d11796628dcfe0"
+  };
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.database();
+} catch(e) {
+  alert('Firebase a eu un petit souci, mais les boutons vont marcher quand même. Erreur: ' + e.message);
+}
 
 function setup(){
+  alert('Bouton cliqué !');
   var n=document.getElementById('monNomInput').value.trim();
   var g=document.getElementById('codeGroupeInput').value.trim();
   if(!n||!g){alert('Écris ton pseudo ET le code secret !');return;}
@@ -128,6 +134,7 @@ function majSetup(){
 }
 function connecterLive(){
   if(!monNom || !codeGroupe) return;
+  if(!db){alert('Firebase pas encore prêt, réessaie dans 2 secondes');return;}
   if(currentRef) currentRef.off();
   currentRef = db.ref('codes/' + codeGroupe + '/membres');
   document.getElementById('liveStatus').innerText = '● EN DIRECT - Code ' + codeGroupe;
@@ -144,7 +151,7 @@ function connecterLive(){
   envoyerPositionFirebase();
 }
 function envoyerPositionFirebase(){
-  if(!monNom || !codeGroupe || maLat==null) return;
+  if(!monNom || !codeGroupe || maLat==null || !db) return;
   db.ref('codes/' + codeGroupe + '/membres/' + monNom.toLowerCase()).set({
     nom: monNom,
     couleur: '#FFD700',
@@ -203,4 +210,34 @@ function maj(){
   var rot=cap-heading;
   document.getElementById('distance').innerText=Math.round(dist)+' m';
   document.getElementById('info').innerText=(dist<20)?'TU ES TOUT PRÈS !':'Marche vers la pointe ROUGE !';
-  document.getElementById('aiguille').style.transform='translate(-50%,-
+  document.getElementById('aiguille').style.transform='translate(-50%,-50%) rotate('+rot+'deg)';
+}
+function activer(){
+  alert('Bouton GPS cliqué !');
+  if(!navigator.geolocation){alert('Pas de GPS sur ce téléphone');return;}
+  navigator.geolocation.watchPosition(function(p){
+    maLat=p.coords.latitude; maLng=p.coords.longitude;
+    document.getElementById('status').innerText='GPS OK ✅';
+    document.getElementById('gpsCard').classList.add('ok');
+    envoyerPositionFirebase();
+    maj();
+  },function(e){alert('Autorise la position ! '+e.message);},{enableHighAccuracy:true});
+  alert('GPS demandé ! Dis Autoriser !');
+}
+window.addEventListener('deviceorientation',function(e){
+  if(e.webkitCompassHeading!=null){heading=e.webkitCompassHeading;}
+  else if(e.alpha!=null){heading=360-e.alpha;}
+  maj();
+});
+var params = new URLSearchParams(window.location.search);
+var codeLien = params.get('code');
+if(codeLien){
+  codeGroupe = codeLien.toUpperCase();
+  localStorage.setItem('codeGroupe', codeGroupe);
+  document.getElementById('codeGroupeInput').value = codeGroupe;
+}
+majSetup();
+if(monNom && codeGroupe) connecterLive();
+</script>
+</body>
+</html>
